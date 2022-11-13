@@ -115,8 +115,8 @@ validSet = pd.concat([Y_less,N_less]);
 dtf_train = trainSet
 dtf_valid = validSet
 
-dtf_train = pd.read_csv('trainSet_0.9943334613605899_.csv') 
-dtf_valid = pd.read_csv('validSet_0.9943334613605899_.csv') 
+# dtf_train = pd.read_csv('trainSet_0.9943334613605899_.csv') 
+# dtf_valid = pd.read_csv('validSet_0.9943334613605899_.csv') 
 
 test_data = pd.read_csv('test.csv')
 test_data = testPreprocess(test_data)
@@ -125,7 +125,7 @@ X = dtf_train.drop("Y", axis=1).values
 y = dtf_train["Y"].values
 feature_names = dtf_train.drop("Y", axis=1).columns.tolist()
 # Importance
-model = ensemble.RandomForestClassifier(n_estimators=100, criterion="entropy", random_state=0)
+model = ensemble.RandomForestClassifier(n_estimators=1000, criterion="entropy", random_state=0)
 model.fit(X, y)
 importances = model.feature_importances_
 # Put in a pandas dtf
@@ -133,30 +133,6 @@ dtf_importances = pd.DataFrame({"IMPORTANCE": importances,"VARIABLE": feature_na
 dtf_importances['cumsum'] = dtf_importances['IMPORTANCE'].cumsum(axis=0)
 dtf_importances = dtf_importances.set_index("VARIABLE")
 
-# Plot
-fig, ax = plt.subplots(nrows=1, ncols=2, sharex=False, sharey=False)
-fig.suptitle("Features Importance", fontsize=20)
-ax[0].title.set_text('variables')
-
-dtf_importances[["IMPORTANCE"]].sort_values(by="IMPORTANCE").plot(
-    kind="barh", legend=False, ax=ax[0]).grid(axis="x")
-ax[0].set(ylabel="")
-ax[1].title.set_text('cumulative')
-dtf_importances[["cumsum"]].plot(kind="line", linewidth=4,
-                                 legend=False, ax=ax[1])
-ax[1].set(xlabel="", xticks=np.arange(len(dtf_importances)),
-          xticklabels=dtf_importances.index)
-plt.xticks(rotation=70)
-plt.grid(axis='both')
-#plt.show()
-
-#print(dtf_importances.index);
-
-# print(dtf.drop("Y", axis=1).columns.tolist())
-
-#dtf_train, dtf_valid = model_selection.train_test_split(dtf, test_size=0.3)
-
-results = []
 
 #for i in range(1,len(dtf_importances.index)):
 X_names = dtf_importances.index
