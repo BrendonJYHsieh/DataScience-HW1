@@ -16,6 +16,7 @@ from sklearn.impute import KNNImputer
 from lime import lime_tabular
 import csv
 import random
+from tqdm import tqdm
 
 
 def utils_recognize_type(dtf, col, max_cat=20):
@@ -24,23 +25,58 @@ def utils_recognize_type(dtf, col, max_cat=20):
     else:
         return "num"
 
-def Preprocess(dtf,train=False):
+def inputPreprocess(dtf):
     
     dtf = dtf.drop("Attribute1", axis=1)
     
-    if(train):
-        dtf = dtf.rename(columns={"Attribute17": "Y"})
-        dtf = dtf.replace({'Y': {'Yes': 1, 'No': 0}})
+    dummy = pd.get_dummies(
+    dtf["Attribute8"],  prefix="Attribute8", drop_first=True)
+    dtf = pd.concat([dtf, dummy], axis=1)
+    dtf.loc[dtf.Attribute8.isnull(), dtf.columns.str.startswith("Attribute8_")] = np.nan
+    dtf = dtf.drop("Attribute8", axis=1)
+
+    dummy = pd.get_dummies(
+    dtf["Attribute10"],  prefix="Attribute10", drop_first=True)
+    dtf = pd.concat([dtf, dummy], axis=1)
+    dtf.loc[dtf.Attribute10.isnull(), dtf.columns.str.startswith("Attribute10_")] = np.nan
+    dtf = dtf.drop("Attribute10", axis=1)
+
+    dummy = pd.get_dummies(
+    dtf["Attribute14"],  prefix="Attribute14", drop_first=True)
+    dtf = pd.concat([dtf, dummy], axis=1)
+    dtf.loc[dtf.Attribute14.isnull(), dtf.columns.str.startswith("Attribute14_")] = np.nan
+    dtf = dtf.drop("Attribute14", axis=1)
+
+    dummy = pd.get_dummies(
+    dtf["Attribute16"],  prefix="Attribute16", drop_first=True)
+    dtf = pd.concat([dtf, dummy], axis=1)
+    dtf.loc[dtf.Attribute16.isnull(), dtf.columns.str.startswith("Attribute16_")] = np.nan
+    dtf = dtf.drop("Attribute16", axis=1)
+    
+    count = 0
+    while count <= 10827:
+        num = random.randrange(0,17104-count-1)
+        if(dtf.iloc[[num]].values[0][11]=="No"):
+            count = count+1
+            dtf = dtf.drop(num, axis=0)
+            dtf = dtf.reset_index(drop=True)
+            
+    return dtf
+            
+def trainPreprocess(dtf):
+    
+    dtf = dtf.rename(columns={"Attribute17": "Y"})
+    dtf = dtf.replace({'Y': {'Yes': 1, 'No': 0}})
 
     imputer = KNNImputer(n_neighbors=5, weights="uniform")
     
-    missingCol = ['Attribute3','Attribute4','Attribute5','Attribute6','Attribute7','Attribute9','Attribute11','Attribute12','Attribute13','Attribute15'];
-    for i in missingCol:
+    for i in tqdm(dtf.columns[dtf.isnull().any()].tolist()):
         dtf[i] = imputer.fit_transform(dtf[[i]])
         
-    
     dtf = dtf.dropna(axis=0).reset_index(drop=True)
     
+    dtf.to_csv('trainSet.csv')
+
     
     # dtf["Attribute3"] = dtf["Attribute3"].fillna(dtf["Attribute3"].mean())
     # dtf["Attribute4"] = dtf["Attribute4"].fillna(dtf["Attribute4"].mean())
@@ -53,6 +89,19 @@ def Preprocess(dtf,train=False):
     # dtf["Attribute13"] = dtf["Attribute13"].fillna(dtf["Attribute13"].mean())
     # dtf["Attribute15"] = dtf["Attribute15"].fillna(dtf["Attribute15"].mean())
     
+    scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+    X = scaler.fit_transform(dtf.drop("Y", axis=1))
+    dtf_scaled = pd.DataFrame(X, columns=dtf.drop(
+        "Y", axis=1).columns, index=dtf.index)
+    dtf_scaled["Y"] = dtf["Y"]
+    dtf = dtf_scaled
+    
+    return dtf
+
+def testPreprocess(dtf):
+    
+    dtf = dtf.drop("Attribute1", axis=1)
+    dtf = dtf.dropna(axis=0).reset_index(drop=True)
     dummy = pd.get_dummies(
     dtf["Attribute8"],  prefix="Attribute8", drop_first=True)
     dtf = pd.concat([dtf, dummy], axis=1)
@@ -69,55 +118,39 @@ def Preprocess(dtf,train=False):
                         prefix="Attribute16", drop_first=True)
     dtf = pd.concat([dtf, dummy], axis=1)
     dtf = dtf.drop("Attribute16", axis=1)
-    
-    
     scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
-    if(train):
-        X = scaler.fit_transform(dtf.drop("Y", axis=1))
-        dtf_scaled = pd.DataFrame(X, columns=dtf.drop(
-            "Y", axis=1).columns, index=dtf.index)
-        dtf_scaled["Y"] = dtf["Y"]
-        dtf = dtf_scaled
-    else:
-        
-        X = scaler.fit_transform(dtf)
-        dtf = pd.DataFrame(X, columns=dtf.columns, index=dtf.index)
-
+    X = scaler.fit_transform(dtf)
+    dtf = pd.DataFrame(X, columns=dtf.columns, index=dtf.index)
+    
     return dtf
+    
+    
 
-dtf = pd.read_csv('train.csv')
+dtf = inputPreprocess(pd.read_csv('train.csv'))
 
 
-indexes = []
-count = 0
-
-while count <= 10827:
-    num = random.randrange(0,17104-count-1)
-    if(dtf.iloc[[num]].values[0][16]=="No"):
-        count = count+1
-        dtf = dtf.drop(num, axis=0)
-        dtf = dtf.reset_index(drop=True)
-
-dtf = dtf.drop(indexes, axis=0)
 
 dtf.to_csv('Processed_train.csv')
 
-dtf_train, dtf_test = model_selection.train_test_split(dtf, test_size=0.2)
 
-dtf_train = Preprocess(dtf,True)
-dtf_test = Preprocess(dtf_test,True)
+
+
+dtf_train, dtf_valid = model_selection.train_test_split(dtf, test_size=0.2)
+
+dtf_train = trainPreprocess(dtf)
+dtf_valid = trainPreprocess(dtf_valid)
 
 test_data = pd.read_csv('test.csv')
-test_data = Preprocess(test_data,False)
+test_data = testPreprocess(test_data)
 
-#dtf_test = Preprocess(dtf_test)
+#dtf_valid = Preprocess(dtf_valid)
 
 
 # Data Encoding
 
 
 
-#dtf_test.to_csv('Processed_test.csv')
+#dtf_valid.to_csv('Processed_test.csv')
 
 
 
@@ -166,16 +199,18 @@ plt.grid(axis='both')
 
 # print(dtf.drop("Y", axis=1).columns.tolist())
 
-#dtf_train, dtf_test = model_selection.train_test_split(dtf, test_size=0.3)
+#dtf_train, dtf_valid = model_selection.train_test_split(dtf, test_size=0.3)
 
 results = []
 
 #for i in range(1,len(dtf_importances.index)):
-X_names = dtf_importances.index[:13]
+X_names = dtf_importances.index[:17]
 X_train = dtf_train[X_names].values
 y_train = dtf_train["Y"].values
-X_test = dtf_test[X_names].values
-y_test = dtf_test["Y"].values
+X_test = dtf_valid[X_names].values
+y_test = dtf_valid["Y"].values
+
+
 
 # call model
 model = ensemble.GradientBoostingClassifier()
@@ -199,8 +234,8 @@ model = random_search.best_estimator_
 # # ## train
 model.fit(X_train, y_train)
 ## test
-predicted_prob = model.predict_proba(dtf_test[X_names].values)[:,1]
-predicted = model.predict(dtf_test[X_names].values)
+predicted_prob = model.predict_proba(dtf_valid[X_names].values)[:,1]
+predicted = model.predict(dtf_valid[X_names].values)
 
 
 
