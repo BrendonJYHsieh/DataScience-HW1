@@ -12,6 +12,7 @@ import statsmodels.api as sm
 # for machine learning
 from sklearn import model_selection, preprocessing, feature_selection, ensemble, linear_model, metrics, decomposition
 from sklearn.impute import KNNImputer
+from sklearn.utils import shuffle
 # for explainercl
 from lime import lime_tabular
 import csv
@@ -90,33 +91,35 @@ def testPreprocess(dtf):
 _dtf = pd.read_csv('train.csv') 
 
 Y = _dtf.loc[_dtf['Attribute17'] == "Yes"]
+Y = Y.dropna(how='any')
 N = _dtf.loc[_dtf['Attribute17'] == "No"]
 N = N.dropna(how='any')
+N = N.reset_index(drop=True)
 
-Y = trainPreprocess(inputPreprocess(Y))
-N = trainPreprocess(inputPreprocess(N))
-
-Y.to_csv('./data/inputProcessed/Attribute17_Y_train.csv',index=False)
-N.to_csv('./data/inputProcessed/Attribute17_N_train.csv',index=False)
+Y.to_csv('YYY.csv')
 
 count = 0
-while count <= 2558:
+while count <= 4424:
     num = random.randrange(0,5697-count-1)
     count = count+1
     N = N.drop(num, axis=0)
     N = N.reset_index(drop=True)
 
-Y_more, Y_less = model_selection.train_test_split(Y, test_size=0.1)
-N_more, N_less = model_selection.train_test_split(N, test_size=0.1)
+percent = 0.2
 
-trainSet = pd.concat([Y_more,N_more]);
-validSet = pd.concat([Y_less,N_less]);
+Y_more, Y_less = model_selection.train_test_split(Y, test_size=percent)
+N_more, N_less = model_selection.train_test_split(N, test_size=percent)
+
+trainSet = shuffle(trainPreprocess(inputPreprocess(pd.concat([Y_more,N_more]))));
+validSet = shuffle(trainPreprocess(inputPreprocess(pd.concat([Y_less,N_less]))));
+
+
+trainSet.to_csv('./data/inputProcessed/Attribute17_Y_train.csv',index=False)
+validSet.to_csv('./data/inputProcessed/Attribute17_N_train.csv',index=False)
+
 
 dtf_train = trainSet
 dtf_valid = validSet
-
-# dtf_train = pd.read_csv('trainSet_0.9943334613605899_.csv') 
-# dtf_valid = pd.read_csv('validSet_0.9943334613605899_.csv') 
 
 test_data = pd.read_csv('test.csv')
 test_data = testPreprocess(test_data)
@@ -124,14 +127,28 @@ test_data = testPreprocess(test_data)
 X = dtf_train.drop("Y", axis=1).values
 y = dtf_train["Y"].values
 feature_names = dtf_train.drop("Y", axis=1).columns.tolist()
-# Importance
-model = ensemble.RandomForestClassifier(n_estimators=1000, criterion="entropy", random_state=0)
-model.fit(X, y)
+## Importance
+model = ensemble.RandomForestClassifier(n_estimators=100,criterion="entropy", random_state=0)
+model.fit(X,y)
 importances = model.feature_importances_
-# Put in a pandas dtf
-dtf_importances = pd.DataFrame({"IMPORTANCE": importances,"VARIABLE": feature_names}).sort_values("IMPORTANCE",ascending=False)
-dtf_importances['cumsum'] = dtf_importances['IMPORTANCE'].cumsum(axis=0)
+## Put in a pandas dtf
+dtf_importances = pd.DataFrame({"IMPORTANCE":importances, "VARIABLE":feature_names}).sort_values("IMPORTANCE", ascending=False)
+dtf_importances['cumsum'] =  dtf_importances['IMPORTANCE'].cumsum(axis=0)
 dtf_importances = dtf_importances.set_index("VARIABLE")
+    
+## Plot
+fig, ax = plt.subplots(nrows=1, ncols=2, sharex=False, sharey=False)
+fig.suptitle("Features Importance", fontsize=20)
+ax[0].title.set_text('variables') 
+dtf_importances[["IMPORTANCE"]].sort_values(by="IMPORTANCE").plot( kind="barh", legend=False, ax=ax[0]).grid(axis="x")
+ax[0].set(ylabel="")
+ax[1].title.set_text('cumulative')
+dtf_importances[["cumsum"]].plot(kind="line", linewidth=4, 
+                                 legend=False, ax=ax[1])
+ax[1].set(xlabel="", xticks=np.arange(len(dtf_importances)), xticklabels=dtf_importances.index)
+plt.xticks(rotation=70)
+plt.grid(axis='both')
+plt.show()
 
 
 #for i in range(1,len(dtf_importances.index)):
@@ -146,13 +163,13 @@ y_test = dtf_valid["Y"].values
 # call model
 model = ensemble.GradientBoostingClassifier()
 ## define hyperparameters combinations to try
-param_dic = {'learning_rate':[0.15],      #weighting factor for the corrections by new trees when added to the model
-'n_estimators':[1750],  #number of trees added to the model
-'max_depth':[3],    #maximum depth of the tree
-'min_samples_split':[8],    #sets the minimum number of samples to split
-'min_samples_leaf':[1],     #the minimum number of samples to form a leaf
-'max_features':[7],     #square root of features is usually a good starting point
-'subsample':[0.8]}       #the fraction of samples to be used for fitting the individual base learners. Values lower than 1 generally lead to a reduction of variance and an increase in bias.
+param_dic = {'learning_rate':[0.15,0.1,0.05,0.01,0.005,0.001],      #weighting factor for the corrections by new trees when added to the model
+'n_estimators':[100,250,500,750,1000,1250,1500,1750],  #number of trees added to the model
+'max_depth':[2,3,4,5,6,7],    #maximum depth of the tree
+'min_samples_split':[2,4,6,8,10,20,40,60,100],    #sets the minimum number of samples to split
+'min_samples_leaf':[1,3,5,7,9],     #the minimum number of samples to form a leaf
+'max_features':[2,3,4,5,6,7],     #square root of features is usually a good starting point
+'subsample':[0.7,0.75,0.8,0.85,0.9,0.95,1]}       #the fraction of samples to be used for fitting the individual base learners. Values lower than 1 generally lead to a reduction of variance and an increase in bias.
 random_search = model_selection.RandomizedSearchCV(model,param_distributions=param_dic, n_iter=1000,scoring="accuracy", n_jobs = -1,verbose=1).fit(X_train, y_train)
 print("Best Model parameters:", random_search.best_params_)
 print("Best Model mean accuracy:", random_search.best_score_)
@@ -208,5 +225,5 @@ with open('ans.csv', 'w', newline='') as outfile:
     writer.writerow(['id', 'ans'])
     writer.writerows(ans)
     
-trainSet.to_csv('./data/split/trainSet_'+ str(random_search.best_score_) + '_.csv',index=False)
-validSet.to_csv('./data/split/validSet_'+ str(random_search.best_score_) + '_.csv',index=False)
+# trainSet.to_csv('./data/split/trainSet_'+ str(random_search.best_score_) + '_.csv',index=False)
+# validSet.to_csv('./data/split/validSet_'+ str(random_search.best_score_) + '_.csv',index=False)
