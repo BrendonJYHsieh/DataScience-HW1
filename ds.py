@@ -28,9 +28,10 @@ def utils_recognize_type(dtf, col, max_cat=20):
 
 def inputPreprocess(dtf):
     
+    dummy = pd.get_dummies(
+    dtf["Attribute1"],  prefix="Attribute1", drop_first=True)
+    dtf = pd.concat([dtf, dummy], axis=1)
     dtf = dtf.drop("Attribute1", axis=1)
-    dtf = dtf.drop("Attribute8", axis=1)
-    dtf = dtf.drop("Attribute10", axis=1)
 
     dummy = pd.get_dummies(
     dtf["Attribute14"],  prefix="Attribute14", drop_first=True)
@@ -47,14 +48,15 @@ def inputPreprocess(dtf):
     return dtf
             
 def trainPreprocess(dtf):
-    
+
     dtf = dtf.rename(columns={"Attribute17": "Y"})
     dtf = dtf.replace({'Y': {'Yes': 1, 'No': 0}})
 
-    imputer = KNNImputer(n_neighbors=3, weights="uniform")
+    imputer = KNNImputer(n_neighbors=5, weights="uniform")
     
     for i in tqdm(dtf.columns[dtf.isnull().any()].tolist()):
-        dtf[i] = imputer.fit_transform(dtf[[i]])
+        dtf[i] = dtf[i].fillna(dtf[i].mean())
+        #dtf[i] = imputer.fit_transform(dtf[[i]])
         
     dtf = dtf.dropna(axis=0).reset_index(drop=True)
     
@@ -70,16 +72,18 @@ def trainPreprocess(dtf):
 
 def testPreprocess(dtf):
     
-    dtf = dtf.drop("Attribute1", axis=1)
     dtf = dtf.drop("Attribute8", axis=1)
     dtf = dtf.drop("Attribute10", axis=1)
+    
+    dummy = pd.get_dummies(dtf["Attribute1"],  prefix="Attribute1", drop_first=True)
+    dtf = pd.concat([dtf, dummy], axis=1)
+    dtf = dtf.drop("Attribute1", axis=1)
 
     dummy = pd.get_dummies(dtf["Attribute14"],prefix="Attribute14", drop_first=True)
     dtf = pd.concat([dtf, dummy], axis=1)
     dtf = dtf.drop("Attribute14", axis=1)
     
-    dummy = pd.get_dummies(dtf["Attribute16"],
-                        prefix="Attribute16", drop_first=True)
+    dummy = pd.get_dummies(dtf["Attribute16"], prefix="Attribute16", drop_first=True)
     dtf = pd.concat([dtf, dummy], axis=1)
     dtf = dtf.drop("Attribute16", axis=1)
     scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
@@ -90,22 +94,30 @@ def testPreprocess(dtf):
     
 _dtf = pd.read_csv('train.csv') 
 
+_dtf['Attribute1']=_dtf['Attribute1'].apply(lambda row: row.split('/')[1])
+
+
 Y = _dtf.loc[_dtf['Attribute17'] == "Yes"]
+#Y = Y.drop("Attribute1", axis=1)
+Y = Y.drop("Attribute8", axis=1)
+Y = Y.drop("Attribute10", axis=1)
 Y = Y.dropna(how='any')
+Y = Y.reset_index(drop=True)
+
 N = _dtf.loc[_dtf['Attribute17'] == "No"]
+#N = N.drop("Attribute1", axis=1)
+N = N.drop("Attribute8", axis=1)
+N = N.drop("Attribute10", axis=1)
 N = N.dropna(how='any')
 N = N.reset_index(drop=True)
 
 Y.to_csv('YYY.csv')
 
-count = 0
-while count <= 4424:
-    num = random.randrange(0,5697-count-1)
-    count = count+1
-    N = N.drop(num, axis=0)
-    N = N.reset_index(drop=True)
+remove_N = N.sample(n=len(N.index)-len(Y.index),random_state=random.randint(0,999999),axis=0)
+N = N.drop(remove_N.index, axis=0)
+N = N.reset_index(drop=True)
 
-percent = 0.2
+percent = 0.3
 
 Y_more, Y_less = model_selection.train_test_split(Y, test_size=percent)
 N_more, N_less = model_selection.train_test_split(N, test_size=percent)
@@ -113,13 +125,15 @@ N_more, N_less = model_selection.train_test_split(N, test_size=percent)
 trainSet = shuffle(trainPreprocess(inputPreprocess(pd.concat([Y_more,N_more]))));
 validSet = shuffle(trainPreprocess(inputPreprocess(pd.concat([Y_less,N_less]))));
 
-
 trainSet.to_csv('./data/inputProcessed/Attribute17_Y_train.csv',index=False)
 validSet.to_csv('./data/inputProcessed/Attribute17_N_train.csv',index=False)
 
 
 dtf_train = trainSet
 dtf_valid = validSet
+
+# dtf_train = pd.read_csv('./data/inputProcessed/Best/Attribute17_Y_train.csv') 
+# dtf_valid = pd.read_csv('./data/inputProcessed/Best/Attribute17_N_train.csv') 
 
 test_data = pd.read_csv('test.csv')
 test_data = testPreprocess(test_data)
@@ -152,7 +166,7 @@ plt.show()
 
 
 #for i in range(1,len(dtf_importances.index)):
-X_names = dtf_importances.index
+X_names = dtf_importances.index[:14]
 X_train = dtf_train[X_names].values
 y_train = dtf_train["Y"].values
 X_test = dtf_valid[X_names].values
@@ -163,13 +177,13 @@ y_test = dtf_valid["Y"].values
 # call model
 model = ensemble.GradientBoostingClassifier()
 ## define hyperparameters combinations to try
-param_dic = {'learning_rate':[0.15,0.1,0.05,0.01,0.005,0.001],      #weighting factor for the corrections by new trees when added to the model
-'n_estimators':[100,250,500,750,1000,1250,1500,1750],  #number of trees added to the model
-'max_depth':[2,3,4,5,6,7],    #maximum depth of the tree
+param_dic = {'learning_rate':[0.05],      #weighting factor for the corrections by new trees when added to the model
+'n_estimators':[1250],  #number of trees added to the model
+'max_depth':[7],    #maximum depth of the tree
 'min_samples_split':[2,4,6,8,10,20,40,60,100],    #sets the minimum number of samples to split
-'min_samples_leaf':[1,3,5,7,9],     #the minimum number of samples to form a leaf
-'max_features':[2,3,4,5,6,7],     #square root of features is usually a good starting point
-'subsample':[0.7,0.75,0.8,0.85,0.9,0.95,1]}       #the fraction of samples to be used for fitting the individual base learners. Values lower than 1 generally lead to a reduction of variance and an increase in bias.
+'min_samples_leaf':[1],     #the minimum number of samples to form a leaf
+'max_features':[3],     #square root of features is usually a good starting point
+'subsample':[0.7]}       #the fraction of samples to be used for fitting the individual base learners. Values lower than 1 generally lead to a reduction of variance and an increase in bias.
 random_search = model_selection.RandomizedSearchCV(model,param_distributions=param_dic, n_iter=1000,scoring="accuracy", n_jobs = -1,verbose=1).fit(X_train, y_train)
 print("Best Model parameters:", random_search.best_params_)
 print("Best Model mean accuracy:", random_search.best_score_)
@@ -181,9 +195,6 @@ model.fit(X_train, y_train)
 ## test
 predicted_prob = model.predict_proba(dtf_valid[X_names].values)[:,1]
 predicted = model.predict(dtf_valid[X_names].values)
-
-
-
 
 
 ## Accuray e AUC
@@ -225,5 +236,5 @@ with open('ans.csv', 'w', newline='') as outfile:
     writer.writerow(['id', 'ans'])
     writer.writerows(ans)
     
-# trainSet.to_csv('./data/split/trainSet_'+ str(random_search.best_score_) + '_.csv',index=False)
-# validSet.to_csv('./data/split/validSet_'+ str(random_search.best_score_) + '_.csv',index=False)
+trainSet.to_csv('./data/split/trainSet_'+ str(random_search.best_score_) + '_.csv',index=False)
+validSet.to_csv('./data/split/validSet_'+ str(random_search.best_score_) + '_.csv',index=False)
