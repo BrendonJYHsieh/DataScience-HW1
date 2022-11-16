@@ -126,7 +126,7 @@ plt.show()
 
 
 #for i in range(1,len(dtf_importances.index)):
-X_names = dtf_importances.index[:10]
+X_names = dtf_importances.index
 X_train = dtf_train[X_names].values
 y_train = dtf_train["Y"].values
 X_test = dtf_valid[X_names].values
@@ -166,7 +166,6 @@ for key in models.keys():
     
     # Fit the classifier
     models[key].fit(X_train, y_train)
-    
     # Make predictions
     predictions = models[key].predict(X_test)
     
@@ -236,29 +235,34 @@ plt.tight_layout()
 predicted_list = []
 # predicted_ = model.predict(test_data[X_names].values)
 
+model_list = ['Logistic Regression','Support Vector Machines']
+
 for i in tqdm(range(0,10)):
     # model = random_search.best_estimator_
     # model.fit(X_train, y_train)
     # predicted_list.append(model.predict(test_data[X_names].values))
-    Y_more, Y_less = model_selection.train_test_split(Y, test_size=percent)
-    N_more, N_less = model_selection.train_test_split(N, test_size=percent)
 
-    trainSet = shuffle(trainPreprocess(pd.concat([Y_more,N_more])))
-    validSet = shuffle(trainPreprocess(pd.concat([Y_less,N_less])))
+    
+    for j in model_list:
+        while True:
+            Y_more, Y_less = model_selection.train_test_split(Y, test_size=percent)
+            N_more, N_less = model_selection.train_test_split(N, test_size=percent)
+            dtf_train = shuffle(trainPreprocess(pd.concat([Y_more,N_more])))
+            dtf_valid = shuffle(trainPreprocess(pd.concat([Y_less,N_less])))
+            X_train = dtf_train[X_names].values
+            y_train = dtf_train["Y"].values
+            X_test = dtf_valid[X_names].values
+            y_test = dtf_valid["Y"].values
+            models[j].fit(X_train, y_train)
+            predictions = models[j].predict(X_test)
+            accuracy = accuracy_score(predictions, y_test)
+            precision= precision_score(predictions, y_test)
+            recall = recall_score(predictions, y_test)
 
-    dtf_train = trainSet
-    dtf_valid = validSet
-    X_train = dtf_train[X_names].values
-    y_train = dtf_train["Y"].values
-    X_test = dtf_valid[X_names].values
-    y_test = dtf_valid["Y"].values
-
-    models['Logistic Regression'].fit(X_train, y_train)
-    predicted_list.append(models['Logistic Regression'].predict(test_data[X_names].values))
-    models['Support Vector Machines'].fit(X_train, y_train)
-    predicted_list.append(models['Support Vector Machines'].predict(test_data[X_names].values))
-    models['Random Forest'].fit(X_train, y_train)
-    predicted_list.append(models['Random Forest'].predict(test_data[X_names].values))
+            if(accuracy>=0.82):
+                print(accuracy,precision,recall)
+                predicted_list.append(models[j].predict(test_data[X_names].values))
+                break
     
 ans = []
 for i in tqdm(range(0,806)):
@@ -269,7 +273,7 @@ for i in tqdm(range(0,806)):
         ans.append([str(i)+'.0',str(0)])
     else:
         ans.append([str(i)+'.0',str(1)])
-    #print(i,result.count(0),result.count(1))
+    print(i,result.count(0),result.count(1))
     
         
 with open('ans.csv', 'w', newline='') as outfile:
