@@ -18,19 +18,6 @@ import random
 from tqdm import tqdm
 import sys
 
-def inputPreprocess(dtf):
-
-    # dummy = pd.get_dummies(dtf["Attribute14"], prefix="Attribute14", drop_first=True)
-    # dtf = pd.concat([dtf, dummy], axis=1)
-    # dtf = dtf.drop("Attribute14", axis=1)
-
-    dummy = pd.get_dummies(
-    dtf["Attribute16"],  prefix="Attribute16", drop_first=True)
-    dtf = pd.concat([dtf, dummy], axis=1)
-    dtf.loc[dtf.Attribute16.isnull(), dtf.columns.str.startswith("Attribute16_")] = np.nan
-    dtf = dtf.drop("Attribute16", axis=1)
-            
-    return dtf
             
 def trainPreprocess(dtf):
 
@@ -58,14 +45,8 @@ def testPreprocess(dtf):
     dtf = dtf.drop("Attribute8", axis=1)
     dtf = dtf.drop("Attribute10", axis=1)
     dtf = dtf.drop("Attribute14", axis=1)
-
-    # dummy = pd.get_dummies(dtf["Attribute14"], prefix="Attribute14", drop_first=True)
-    # dtf = pd.concat([dtf, dummy], axis=1)
-    # dtf = dtf.drop("Attribute14", axis=1)
-    
-    dummy = pd.get_dummies(dtf["Attribute16"], prefix="Attribute16", drop_first=True)
-    dtf = pd.concat([dtf, dummy], axis=1)
     dtf = dtf.drop("Attribute16", axis=1)
+
     scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
     X = scaler.fit_transform(dtf)
     dtf = pd.DataFrame(X, columns=dtf.columns, index=dtf.index)
@@ -80,22 +61,20 @@ Y = Y.drop("Attribute1", axis=1)
 Y = Y.drop("Attribute8", axis=1)
 Y = Y.drop("Attribute10", axis=1)
 Y = Y.drop("Attribute14", axis=1)
+Y = Y.drop("Attribute16", axis=1)
 Y = Y.dropna(how='any')
 Y = Y.reset_index(drop=True)
-
-print(len(Y.index))
 
 N = _dtf.loc[_dtf['Attribute17'] == "No"]
 N = N.drop("Attribute1", axis=1)
 N = N.drop("Attribute8", axis=1)
 N = N.drop("Attribute10", axis=1)
 N = N.drop("Attribute14", axis=1)
+N = N.drop("Attribute16", axis=1)
 N = N.dropna(how='any')
 N = N.reset_index(drop=True)
 
-print(len(N.index))
-
-Y.to_csv('YYY.csv')
+print(len(Y.index),len(N.index))
 
 remove_N = N.sample(n=len(N.index)-len(Y.index),random_state=random.randint(0,999999),axis=0)
 N = N.drop(remove_N.index, axis=0)
@@ -106,8 +85,8 @@ percent = 0.3
 Y_more, Y_less = model_selection.train_test_split(Y, test_size=percent)
 N_more, N_less = model_selection.train_test_split(N, test_size=percent)
 
-trainSet = shuffle(trainPreprocess(inputPreprocess(pd.concat([Y_more,N_more]))));
-validSet = shuffle(trainPreprocess(inputPreprocess(pd.concat([Y_less,N_less]))));
+trainSet = shuffle(trainPreprocess(pd.concat([Y_more,N_more])));
+validSet = shuffle(trainPreprocess(pd.concat([Y_less,N_less])));
 
 trainSet.to_csv('./data/inputProcessed/Attribute17_Y_train.csv',index=False)
 validSet.to_csv('./data/inputProcessed/Attribute17_N_train.csv',index=False)
@@ -257,15 +236,15 @@ plt.tight_layout()
 predicted_list = []
 # predicted_ = model.predict(test_data[X_names].values)
 
-for i in tqdm(range(0,101)):
+for i in tqdm(range(0,10)):
     # model = random_search.best_estimator_
     # model.fit(X_train, y_train)
     # predicted_list.append(model.predict(test_data[X_names].values))
     Y_more, Y_less = model_selection.train_test_split(Y, test_size=percent)
     N_more, N_less = model_selection.train_test_split(N, test_size=percent)
 
-    trainSet = shuffle(trainPreprocess(inputPreprocess(pd.concat([Y_more,N_more]))))
-    validSet = shuffle(trainPreprocess(inputPreprocess(pd.concat([Y_less,N_less]))))
+    trainSet = shuffle(trainPreprocess(pd.concat([Y_more,N_more])))
+    validSet = shuffle(trainPreprocess(pd.concat([Y_less,N_less])))
 
     dtf_train = trainSet
     dtf_valid = validSet
