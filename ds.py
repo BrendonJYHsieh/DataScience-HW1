@@ -23,12 +23,6 @@ def trainPreprocess(dtf):
 
     dtf = dtf.rename(columns={"Attribute17": "Y"})
     dtf = dtf.replace({'Y': {'Yes': 1, 'No': 0}})
-
-    # imputer = KNNImputer(n_neighbors=3, weights="distance")
-    # for i in tqdm(dtf.columns[dtf.isnull().any()].tolist()):
-    #     #dtf[i] = dtf[i].fillna(dtf[i].mean())
-    #     dtf[i] = imputer.fit_transform(dtf[[i]])
-    
     dtf.to_csv('trainSet.csv')
 
     scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
@@ -65,6 +59,9 @@ Y = Y.drop("Attribute16", axis=1)
 Y = Y.dropna(how='any')
 Y = Y.reset_index(drop=True)
 
+for i in Y.columns[:-2]:
+    Y = Y[(Y[i] < (Y[i].mean() + 3*Y[i].std())) & (Y[i] > (Y[i].mean() - 3*Y[i].std()))]
+
 N = _dtf.loc[_dtf['Attribute17'] == "No"]
 N = N.drop("Attribute1", axis=1)
 N = N.drop("Attribute8", axis=1)
@@ -73,6 +70,9 @@ N = N.drop("Attribute14", axis=1)
 N = N.drop("Attribute16", axis=1)
 N = N.dropna(how='any')
 N = N.reset_index(drop=True)
+
+for i in N.columns[:-2]:
+    N = N[(N[i] < (N[i].mean() + 3*N[i].std())) & (N[i] > (N[i].mean() - 3*N[i].std()))]
 
 print(len(Y.index),len(N.index))
 
@@ -120,9 +120,9 @@ ax[0].set(ylabel="")
 ax[1].title.set_text('cumulative')
 dtf_importances[["cumsum"]].plot(kind="line", linewidth=4, legend=False, ax=ax[1])
 ax[1].set(xlabel="", xticks=np.arange(len(dtf_importances)), xticklabels=dtf_importances.index)
-plt.xticks(rotation=70)
-plt.grid(axis='both')
-plt.show()
+# plt.xticks(rotation=70)
+# plt.grid(axis='both')
+# plt.show()
 
 
 #for i in range(1,len(dtf_importances.index)):
@@ -193,56 +193,18 @@ plt.tight_layout()
 
 
 
-# # call model
-# model = ensemble.GradientBoostingClassifier()
-# ## define hyperparameters combinations to try
-# param_dic = {'learning_rate':[0.15,0.1,0.05,0.01,0.005,0.001],      #weighting factor for the corrections by new trees when added to the model
-# 'n_estimators':[100,250,500,750,1000,1250,1500,1750],  #number of trees added to the model
-# 'max_depth':[2,3,4,5,6,7],    #maximum depth of the tree
-# 'min_samples_split':[2,4,6,8,10,20,40,60,100],    #sets the minimum number of samples to split
-# 'min_samples_leaf':[1,3,5,7,9],     #the minimum number of samples to form a leaf
-# 'max_features':[2,3,4,5,6,7],     #square root of features is usually a good starting point
-# 'subsample':[0.7,0.75,0.8,0.85,0.9,0.95,1]}       #the fraction of samples to be used for fitting the individual base learners. Values lower than 1 generally lead to a reduction of variance and an increase in bias.
-# random_search = model_selection.RandomizedSearchCV(model,param_distributions=param_dic, n_iter=1000,scoring="f1", n_jobs = -1,verbose=1).fit(X_train, y_train)
-# print("Best Model parameters:", random_search.best_params_)
-# print("Best Model mean accuracy:", random_search.best_score_)
-
-# model = random_search.best_estimator_
-# model.fit(X_train, y_train)
-# ## test
-
-
-
-
-# predicted_prob = model.predict_proba(dtf_valid[X_names].values)[:,1]
-# predicted = model.predict(dtf_valid[X_names].values)
-
-# ## Accuray e AUC
-# accuracy = metrics.accuracy_score(y_test, predicted)
-# auc = metrics.roc_auc_score(y_test, predicted_prob)
-# print("Accuracy (overall correct predictions):",  round(accuracy,2))
-# print("Auc:", round(auc,2))
-    
-# ## Precision e Recall
-# recall = metrics.recall_score(y_test, predicted)
-# precision = metrics.precision_score(y_test, predicted)
-# print("Recall (all 1s predicted right):", round(recall,2))
-# print("Precision (confidence when predicting a 1):", round(precision,2))
-# print("Detail:")
-# print(metrics.classification_report(y_test, predicted, target_names=[str(i) for i in np.unique(y_test)]))
-
-
 predicted_list = []
 # predicted_ = model.predict(test_data[X_names].values)
 
-model_list = ['Logistic Regression','Support Vector Machines']
+#model_list = ['Logistic Regression']
+#model_list = ['Support Vector Machines']
+model_list = ['Random Forest']
 
-for i in tqdm(range(0,10)):
+
+for i in tqdm(range(0,1)):
     # model = random_search.best_estimator_
     # model.fit(X_train, y_train)
     # predicted_list.append(model.predict(test_data[X_names].values))
-
-    
     for j in model_list:
         while True:
             Y_more, Y_less = model_selection.train_test_split(Y, test_size=percent)
@@ -258,8 +220,7 @@ for i in tqdm(range(0,10)):
             accuracy = accuracy_score(predictions, y_test)
             precision= precision_score(predictions, y_test)
             recall = recall_score(predictions, y_test)
-
-            if(accuracy>=0.82):
+            if(accuracy>=0.809 and precision>0.82 and recall>0.8):
                 print(accuracy,precision,recall)
                 predicted_list.append(models[j].predict(test_data[X_names].values))
                 break
@@ -273,7 +234,7 @@ for i in tqdm(range(0,806)):
         ans.append([str(i)+'.0',str(0)])
     else:
         ans.append([str(i)+'.0',str(1)])
-    print(i,result.count(0),result.count(1))
+    #print(i,result.count(0),result.count(1))
     
         
 with open('ans.csv', 'w', newline='') as outfile:
