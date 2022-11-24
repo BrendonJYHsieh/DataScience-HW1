@@ -40,6 +40,12 @@ def testPreprocess(dtf):
     dtf = dtf.drop("Attribute10", axis=1)
     dtf = dtf.drop("Attribute14", axis=1)
     dtf = dtf.drop("Attribute16", axis=1)
+    dtf = dtf.drop("Attribute13", axis=1)
+    # dtf = dtf.drop("Attribute5", axis=1)
+    # dtf = dtf.drop("Attribute2", axis=1)
+    #dtf = dtf.drop("Attribute9", axis=1)
+    
+    
 
     scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
     X = scaler.fit_transform(dtf)
@@ -56,11 +62,15 @@ Y = Y.drop("Attribute8", axis=1)
 Y = Y.drop("Attribute10", axis=1)
 Y = Y.drop("Attribute14", axis=1)
 Y = Y.drop("Attribute16", axis=1)
+Y = Y.drop("Attribute13", axis=1)
+# Y = Y.drop("Attribute5", axis=1)
+# Y = Y.drop("Attribute2", axis=1)
+#Y = Y.drop("Attribute9", axis=1)
 Y = Y.dropna(how='any')
 Y = Y.reset_index(drop=True)
 
-for i in Y.columns[:-2]:
-    Y = Y[(Y[i] < (Y[i].mean() + 3*Y[i].std())) & (Y[i] > (Y[i].mean() - 3*Y[i].std()))]
+# for i in Y.columns[:-2]:
+#     Y = Y[(Y[i] < (Y[i].mean() + 3*Y[i].std())) & (Y[i] > (Y[i].mean() - 3*Y[i].std()))]
 
 N = _dtf.loc[_dtf['Attribute17'] == "No"]
 N = N.drop("Attribute1", axis=1)
@@ -68,11 +78,15 @@ N = N.drop("Attribute8", axis=1)
 N = N.drop("Attribute10", axis=1)
 N = N.drop("Attribute14", axis=1)
 N = N.drop("Attribute16", axis=1)
+N = N.drop("Attribute13", axis=1)
+# N = N.drop("Attribute5", axis=1)
+# N = N.drop("Attribute2", axis=1)
+#N = N.drop("Attribute9", axis=1)
 N = N.dropna(how='any')
 N = N.reset_index(drop=True)
 
-for i in N.columns[:-2]:
-    N = N[(N[i] < (N[i].mean() + 3*N[i].std())) & (N[i] > (N[i].mean() - 3*N[i].std()))]
+# for i in N.columns[:-2]:
+#     N = N[(N[i] < (N[i].mean() + 3*N[i].std())) & (N[i] > (N[i].mean() - 3*N[i].std()))]
 
 print(len(Y.index),len(N.index))
 
@@ -85,8 +99,8 @@ percent = 0.3
 Y_more, Y_less = model_selection.train_test_split(Y, test_size=percent)
 N_more, N_less = model_selection.train_test_split(N, test_size=percent)
 
-trainSet = shuffle(trainPreprocess(pd.concat([Y_more,N_more])));
-validSet = shuffle(trainPreprocess(pd.concat([Y_less,N_less])));
+trainSet = (trainPreprocess(pd.concat([Y_more,N_more])));
+validSet = (trainPreprocess(pd.concat([Y_less,N_less])));
 
 trainSet.to_csv('./data/inputProcessed/Attribute17_Y_train.csv',index=False)
 validSet.to_csv('./data/inputProcessed/Attribute17_N_train.csv',index=False)
@@ -196,9 +210,9 @@ plt.tight_layout()
 predicted_list = []
 # predicted_ = model.predict(test_data[X_names].values)
 
-#model_list = ['Logistic Regression']
+model_list = ['Logistic Regression']
 #model_list = ['Support Vector Machines']
-model_list = ['Random Forest']
+#model_list = ['Random Forest']
 
 
 for i in tqdm(range(0,1)):
@@ -220,7 +234,9 @@ for i in tqdm(range(0,1)):
             accuracy = accuracy_score(predictions, y_test)
             precision= precision_score(predictions, y_test)
             recall = recall_score(predictions, y_test)
-            if(accuracy>=0.809 and precision>0.82 and recall>0.8):
+            if(accuracy>0.8):
+                print(accuracy,precision,recall)
+            if(accuracy>=0.82 and precision>0.8 and recall>0.8):
                 print(accuracy,precision,recall)
                 predicted_list.append(models[j].predict(test_data[X_names].values))
                 break
