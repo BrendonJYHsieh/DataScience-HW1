@@ -41,9 +41,8 @@ def testPreprocess(dtf):
     dtf = dtf.drop("Attribute14", axis=1)
     dtf = dtf.drop("Attribute16", axis=1)
     dtf = dtf.drop("Attribute13", axis=1)
-    # dtf = dtf.drop("Attribute5", axis=1)
-    # dtf = dtf.drop("Attribute2", axis=1)
-    #dtf = dtf.drop("Attribute9", axis=1)
+    dtf = dtf.drop("Attribute11", axis=1)
+    dtf = dtf.drop("Attribute2", axis=1)
     
     
 
@@ -63,9 +62,8 @@ Y = Y.drop("Attribute10", axis=1)
 Y = Y.drop("Attribute14", axis=1)
 Y = Y.drop("Attribute16", axis=1)
 Y = Y.drop("Attribute13", axis=1)
-# Y = Y.drop("Attribute5", axis=1)
-# Y = Y.drop("Attribute2", axis=1)
-#Y = Y.drop("Attribute9", axis=1)
+Y = Y.drop("Attribute11", axis=1)
+Y = Y.drop("Attribute2", axis=1)
 Y = Y.dropna(how='any')
 Y = Y.reset_index(drop=True)
 
@@ -79,9 +77,8 @@ N = N.drop("Attribute10", axis=1)
 N = N.drop("Attribute14", axis=1)
 N = N.drop("Attribute16", axis=1)
 N = N.drop("Attribute13", axis=1)
-# N = N.drop("Attribute5", axis=1)
-# N = N.drop("Attribute2", axis=1)
-#N = N.drop("Attribute9", axis=1)
+N = N.drop("Attribute11", axis=1)
+N = N.drop("Attribute2", axis=1)
 N = N.dropna(how='any')
 N = N.reset_index(drop=True)
 
@@ -236,7 +233,7 @@ for i in tqdm(range(0,1)):
             recall = recall_score(predictions, y_test)
             if(accuracy>0.8):
                 print(accuracy,precision,recall)
-            if(accuracy>=0.82 and precision>0.8 and recall>0.8):
+            if(accuracy>=0.81 and precision>0.82 and recall>0.8):
                 print(accuracy,precision,recall)
                 predicted_list.append(models[j].predict(test_data[X_names].values))
                 break
